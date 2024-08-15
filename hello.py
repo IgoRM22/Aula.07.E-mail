@@ -9,16 +9,16 @@ from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import mailersend
-from dotenv import load_dotenv
 
-# Carregar variáveis de ambiente
-load_dotenv()
+# Defina diretamente a chave da API
+api_key = 'mlsn.7e4096aed29f00be1663a3354e70feca8fa77421d7eb6ecb3135f15e243603c8'
+if not api_key:
+    raise ValueError("MAILERSEND_API_KEY is not set")
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-
+# Configuração do Flask
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 bootstrap = Bootstrap(app)
@@ -27,9 +27,6 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # Configuração do MailerSend
-api_key = os.getenv('MAILERSEND_API_KEY')
-if not api_key:
-    raise ValueError("MAILERSEND_API_KEY environment variable is not set")
 mailer = mailersend.NewApiClient(api_key)
 
 class Role(db.Model):
@@ -90,7 +87,7 @@ def index():
             text = f"A new user has registered with the username: {form.name.data}."
             html = f"<p>A new user has registered with the username: <strong>{form.name.data}</strong>.</p>"
             my_mail = "info@domain.com"
-            recipient = "i.ramos@ifsp.edu.br"
+            recipient = "i.ramos@aluno.ifsp.edu.b"
             
             try:
                 mailer.send(my_mail, [recipient], subject, html, text)
