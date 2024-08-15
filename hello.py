@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, session, redirect, url_for, flash
+from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
@@ -21,20 +21,6 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Configure o Mailtrap
-MAILTRAP_TOKEN = '7bf8a6384ea51384fc6408c3ca2cf969'
-MAILTRAP_SENDER = 'mailtrap@demomailtrap.com'
-
-def send_email(subject, recipient, body):
-    mail = mt.Mail(
-        sender=mt.Address(email=MAILTRAP_SENDER, name="Mailtrap Test"),
-        to=[mt.Address(email=recipient)],
-        subject=subject,
-        text=body,
-        category="Integration Test",
-    )
-    client = mt.MailtrapClient(token=MAILTRAP_TOKEN)
-    client.send(mail)
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -45,6 +31,7 @@ class Role(db.Model):
     def __repr__(self):
         return '<Role %r>' % self.name
 
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -54,21 +41,26 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
+
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
+
 
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, User=User, Role=Role)
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
+
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('500.html'), 500
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -80,19 +72,26 @@ def index():
             db.session.add(user)
             db.session.commit()
             session['known'] = False
-            # Enviar e-mail para o novo usuário
-            send_email(
-                subject="Novo Registro de Usuário",
-                recipient="i.ramos@aluno.ifsp.edu.br",
-                body=f"Um novo usuário foi registrado com o nome: {form.name.data}"
+            
+            # Configurar e enviar o e-mail
+            mail = mt.Mail(
+                sender=mt.Address(email="mailtrap@demomailtrap.com", name="Mailtrap Test"),
+                to=[mt.Address(email="i.ramos@aluno.ifsp.edu.br")],
+                subject="Novo Usuário Registrado",
+                text=f"Um novo usuário foi registrado: {form.name.data}",
+                category="User Registration",
             )
-            flash(f'Bem-vindo, {form.name.data}!')
+
+            client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969")
+            client.send(mail)
+            
         else:
             session['known'] = True
         session['name'] = form.name.data
         return redirect(url_for('index'))
     return render_template('index.html', form=form, name=session.get('name'),
                            known=session.get('known', False))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
