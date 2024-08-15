@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, session, redirect, url_for
+import requests
+from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
@@ -21,6 +22,18 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+MAILGUN_API_KEY = '8aa4e747c63d7997bc318fdb53b12f74-911539ec-60b1f7c1'
+MAILGUN_DOMAIN = 'sandboxa96fd10e6ec34ba29602647ab40ce9c4.mailgun.org'
+MAILGUN_BASE_URL = 'https://api.mailgun.net/v3/{}'.format(MAILGUN_DOMAIN)
+
+def send_email(subject, text, to):
+    return requests.post(
+        '{}/messages'.format(MAILGUN_BASE_URL),
+        auth=("api", MAILGUN_API_KEY),
+        data={"from": "Excited User <mailgun@{}>'.format(MAILGUN_DOMAIN)",
+              "to": to,
+              "subject": subject,
+              "text": text})
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -72,6 +85,14 @@ def index():
             db.session.add(user)
             db.session.commit()
             session['known'] = False
+
+            # Send email
+            send_email(
+                subject="New User Registered",
+                text="A new user has registered: {}".format(form.name.data),
+                to="meuprofissagit@gmail.com"
+            )
+            flash('A new user has been registered and an email notification has been sent.', 'success')
         else:
             session['known'] = True
         session['name'] = form.name.data
