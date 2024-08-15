@@ -1,5 +1,4 @@
 import os
-import traceback
 from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
@@ -8,17 +7,13 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-import mailersend
+import mailtrap as mt
 
-# Defina diretamente a chave da API
-api_key = 'mlsn.7e4096aed29f00be1663a3354e70feca8fa77421d7eb6ecb3135f15e243603c8'
-if not api_key:
-    raise ValueError("MAILERSEND_API_KEY is not set")
+basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Configuração do Flask
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 bootstrap = Bootstrap(app)
@@ -26,8 +21,20 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Configuração do MailerSend
-mailer = mailersend.NewApiClient(api_key)
+# Configure o Mailtrap
+MAILTRAP_TOKEN = '7bf8a6384ea51384fc6408c3ca2cf969'
+MAILTRAP_SENDER = 'mailtrap@demomailtrap.com'
+
+def send_email(subject, recipient, body):
+    mail = mt.Mail(
+        sender=mt.Address(email=MAILTRAP_SENDER, name="Mailtrap Test"),
+        to=[mt.Address(email=recipient)],
+        subject=subject,
+        text=body,
+        category="Integration Test",
+    )
+    client = mt.MailtrapClient(token=MAILTRAP_TOKEN)
+    client.send(mail)
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -38,7 +45,6 @@ class Role(db.Model):
     def __repr__(self):
         return '<Role %r>' % self.name
 
-
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -48,28 +54,21 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
-
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
-
 
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, User=User, Role=Role)
 
-
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
-
 @app.errorhandler(500)
 def internal_server_error(e):
-    # Log the exception
-    traceback.print_exc()
     return render_template('500.html'), 500
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -81,29 +80,19 @@ def index():
             db.session.add(user)
             db.session.commit()
             session['known'] = False
-
-            # Enviar e-mail
-            subject = "New User Registered"
-            text = f"A new user has registered with the username: {form.name.data}."
-            html = f"<p>A new user has registered with the username: <strong>{form.name.data}</strong>.</p>"
-            my_mail = "info@domain.com"
-            recipient = "i.ramos@aluno.ifsp.edu.b"
-            
-            try:
-                mailer.send(my_mail, [recipient], subject, html, text)
-                flash('Registration successful, and notification email sent.', 'success')
-            except Exception as e:
-                flash('Registration successful, but there was an error sending the notification email.', 'warning')
-                # Log the full traceback for debugging
-                traceback.print_exc()
-
+            # Enviar e-mail para o novo usuário
+            send_email(
+                subject="Novo Registro de Usuário",
+                recipient="i.ramos@aluno.ifsp.edu.br",
+                body=f"Um novo usuário foi registrado com o nome: {form.name.data}"
+            )
+            flash(f'Bem-vindo, {form.name.data}!')
         else:
             session['known'] = True
         session['name'] = form.name.data
         return redirect(url_for('index'))
     return render_template('index.html', form=form, name=session.get('name'),
                            known=session.get('known', False))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
