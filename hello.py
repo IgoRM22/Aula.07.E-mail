@@ -1,4 +1,5 @@
 import os
+import traceback
 from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
@@ -8,13 +9,16 @@ from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import mailersend
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
-app.config['SQLALCHEMY_DATABASE_URI'] =\
-    'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 bootstrap = Bootstrap(app)
@@ -22,8 +26,10 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Defina a chave da API diretamente
-api_key = 'mlsn.7e4096aed29f00be1663a3354e70feca8fa77421d7eb6ecb3135f15e243603c8'
+# Configuração do MailerSend
+api_key = os.getenv('MAILERSEND_API_KEY')
+if not api_key:
+    raise ValueError("MAILERSEND_API_KEY environment variable is not set")
 mailer = mailersend.NewApiClient(api_key)
 
 class Role(db.Model):
@@ -63,6 +69,8 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    # Log the exception
+    traceback.print_exc()
     return render_template('500.html'), 500
 
 
@@ -89,7 +97,8 @@ def index():
                 flash('Registration successful, and notification email sent.', 'success')
             except Exception as e:
                 flash('Registration successful, but there was an error sending the notification email.', 'warning')
-                print(f"Error sending email: {e}")
+                # Log the full traceback for debugging
+                traceback.print_exc()
 
         else:
             session['known'] = True
