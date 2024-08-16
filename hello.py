@@ -82,7 +82,7 @@ def index():
                 category="User Registration",
             )
 
-            client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969") # Token de acesso
+            client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969")
             client.send(mail)
             
         else:
