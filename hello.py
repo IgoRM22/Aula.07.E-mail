@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
@@ -8,6 +9,9 @@ from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import mailtrap as mt
+
+# Configuração do logger
+logging.basicConfig(filename='app.log', level=logging.ERROR)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -59,6 +63,7 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    logging.error('Internal Server Error: %s', str(e))
     return render_template('500.html'), 500
 
 
@@ -66,29 +71,33 @@ def internal_server_error(e):
 def index():
     form = NameForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.name.data).first()
-        if user is None:
-            user = User(username=form.name.data)
-            db.session.add(user)
-            db.session.commit()
-            session['known'] = False
-            
-            # Configurar e enviar o e-mail
-            mail = mt.Mail(
-                sender=mt.Address(email="mailtrap@demomailtrap.com", name="Mailtrap Test"),
-                to=[mt.Address(email="i.ramos@aluno.ifsp.edu.br")],
-                subject="Novo Usuário Registrado",
-                text=f"Um novo usuário foi registrado: {form.name.data}",
-                category="User Registration",
-            )
+        try:
+            user = User.query.filter_by(username=form.name.data).first()
+            if user is None:
+                user = User(username=form.name.data)
+                db.session.add(user)
+                db.session.commit()
+                session['known'] = False
+                
+                # Configurar e enviar o e-mail
+                mail = mt.Mail(
+                    sender=mt.Address(email="mailtrap@demomailtrap.com", name="Mailtrap Test"),
+                    to=[mt.Address(email="i.ramos@aluno.ifsp.edu.br")],
+                    subject="Novo Usuário Registrado",
+                    text=f"Um novo usuário foi registrado: {form.name.data}",
+                    category="User Registration",
+                )
 
-            client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969")
-            client.send(mail)
-            
-        else:
-            session['known'] = True
-        session['name'] = form.name.data
-        return redirect(url_for('index'))
+                client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969")
+                client.send(mail)
+                
+            else:
+                session['known'] = True
+            session['name'] = form.name.data
+            return redirect(url_for('index'))
+        except Exception as e:
+            logging.error('Error during user registration or email sending: %s', str(e))
+            return render_template('500.html'), 500
     return render_template('index.html', form=form, name=session.get('name'),
                            known=session.get('known', False))
 
