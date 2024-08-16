@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
@@ -64,7 +64,7 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     logging.error('Internal Server Error: %s', str(e))
-    return render_template('500.html'), 500
+    return render_template('500.html', error=str(e)), 500
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -96,8 +96,10 @@ def index():
             session['name'] = form.name.data
             return redirect(url_for('index'))
         except Exception as e:
+            # Log do erro e exibição na página
             logging.error('Error during user registration or email sending: %s', str(e))
-            return render_template('500.html'), 500
+            flash(f'Ocorreu um erro: {str(e)}', 'error')
+            return render_template('index.html', form=form, name=session.get('name'), known=session.get('known', False))
     return render_template('index.html', form=form, name=session.get('name'),
                            known=session.get('known', False))
 
