@@ -76,10 +76,7 @@ def index():
             # Configurar e enviar o e-mail
             mail = mt.Mail(
                 sender=mt.Address(email="mailtrap@demomailtrap.com", name="Mailtrap Test"),
-                to=[
-                    mt.Address(email="i.ramos@aluno.ifsp.edu.br"),
-                    mt.Address(email="flaskaulasweb@zohomail.com")
-                ],
+                to=[mt.Address(email="i.ramos@aluno.ifsp.edu.br")],
                 subject="Novo Usuário Registrado",
                 text=f"Um novo usuário foi registrado: {form.name.data}",
                 category="User Registration",
