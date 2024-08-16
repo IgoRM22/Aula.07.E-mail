@@ -14,6 +14,11 @@ from dotenv import load_dotenv
 # Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
 
+# Verificar se o token está sendo carregado corretamente
+MAILTRAP_TOKEN = os.getenv('MAILTRAP_TOKEN')
+if not MAILTRAP_TOKEN:
+    raise ValueError("O token do Mailtrap não foi encontrado no arquivo .env")
+
 # Configuração do logger
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
@@ -96,7 +101,7 @@ def index():
                 )
 
                 # Usar o token do Mailtrap do arquivo .env
-                client = mt.MailtrapClient(token=os.getenv('MAILTRAP_TOKEN'))
+                client = mt.MailtrapClient(token=MAILTRAP_TOKEN)
                 client.send(mail)
                 
             else:
