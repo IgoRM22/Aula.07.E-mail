@@ -78,18 +78,16 @@ def send_simple_message(subject, text):
             api_url,
             auth=("api", mailgun_api_key),
             data={
-                "from": f"Excited User <mailgun@{mailgun_domain}>",
+                "from": f"Aluno IFSP <mailgun@{mailgun_domain}>",
                 "to": ["igor.ramosc1@gmail.com", "flaskaulasweb@zohomail.com"],
                 "subject": subject,
                 "text": text
             })
 
-        response.raise_for_status()  # Levanta uma exceção para status HTTP 4xx ou 5xx
+        response.raise_for_status() 
         return 'E-mail enviado com sucesso!'
     except requests.exceptions.RequestException as e:
-        error_message = f'Ocorreu um erro ao enviar o e-mail: {str(e)}'
-        logging.error('%s\nURL usada: %s', error_message, api_url)
-        return f'{error_message}\nURL usada: {api_url}'
+        return f' ERRO - Verifique se o seu e-mail está verificado na mailgun '
 
 
 @app.route('/', methods=['GET', 'POST'])
