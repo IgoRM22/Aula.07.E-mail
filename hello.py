@@ -1,5 +1,6 @@
 import os
 import logging
+import requests
 from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
@@ -8,10 +9,13 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-import mailtrap as mt
+from dotenv import load_dotenv
 
 # Configuração do logger
 logging.basicConfig(filename='app.log', level=logging.ERROR)
+
+# Carregar variáveis de ambiente do .env
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -25,7 +29,7 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-
+# Modelos
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
@@ -34,7 +38,6 @@ class Role(db.Model):
 
     def __repr__(self):
         return '<Role %r>' % self.name
-
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -45,27 +48,32 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % self.username
 
-
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
+# Função para enviar e-mail usando Mailgun
+def send_email(subject, recipient, text):
+    return requests.post(
+        f"https://api.mailgun.net/v3/{os.getenv('MAILGUN_DOMAIN')}/messages",
+        auth=("api", os.getenv("MAILGUN_API_KEY")),
+        data={"from": "Excited User <mailgun@your-domain.com>",
+              "to": recipient,
+              "subject": subject,
+              "text": text})
 
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, User=User, Role=Role)
 
-
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
-
 
 @app.errorhandler(500)
 def internal_server_error(e):
     logging.error('Internal Server Error: %s', str(e))
     return render_template('500.html', error=str(e)), 500
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -79,21 +87,12 @@ def index():
                 db.session.commit()
                 session['known'] = False
                 
-                # Configurar e enviar o e-mail
-                mail = mt.Mail(
-                    sender=mt.Address(email="mailtrap@demomailtrap.com", name="Mailtrap Test"),
-                    to=[
-                        mt.Address(email="i.ramos@aluno.ifsp.edu.br"),
-                        mt.Address(email="flaskaulasweb@zohomail.com")
-                    ],
-                    subject="Novo Usuário Registrado",
-                    text=f"Um novo usuário foi registrado: {form.name.data}",
-                    category="User Registration",
+                # Enviar o e-mail de boas-vindas
+                send_email(
+                    "Novo Usuário Registrado",
+                    ["i.ramos@aluno.ifsp.edu.br", "flaskaulasweb@zohomail.com"],
+                    f"Um novo usuário foi registrado: {form.name.data}"
                 )
-
-                client = mt.MailtrapClient(token="7bf8a6384ea51384fc6408c3ca2cf969")
-                client.send(mail)
-                
             else:
                 session['known'] = True
             session['name'] = form.name.data
@@ -105,7 +104,6 @@ def index():
             return render_template('index.html', form=form, name=session.get('name'), known=session.get('known', False))
     return render_template('index.html', form=form, name=session.get('name'),
                            known=session.get('known', False))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
